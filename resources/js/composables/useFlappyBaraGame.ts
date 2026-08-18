@@ -9,7 +9,7 @@ export type ActiveEffect = {
     remainingSeconds: number;
 };
 
-type Player = {
+export type Player = {
     x: number;
     y: number;
     velocityY: number;
@@ -48,6 +48,24 @@ export type GameSnapshot = {
     obstacles: Array<Pick<Obstacle, 'id' | 'x' | 'gapY' | 'gapSize'>>;
     effects: ActiveEffect[];
     elapsedMilliseconds: number;
+};
+
+export type RacePlayerSnapshot = Pick<
+    GameSnapshot,
+    'phase' | 'score' | 'player' | 'elapsedMilliseconds'
+>;
+
+export type RemotePlayer = {
+    id: number;
+    name: string;
+    color: string;
+    snapshot: RacePlayerSnapshot;
+};
+
+type GameOptions = {
+    seed?: number;
+    canStart?: () => boolean;
+    allowPause?: boolean;
 };
 
 const WORLD_WIDTH = 720;
@@ -114,7 +132,7 @@ const darkPalette = {
     scarf: '#ed8069',
 };
 
-export function useFlappyBaraGame() {
+export function useFlappyBaraGame(options: GameOptions = {}) {
     const canvasRef = ref<HTMLCanvasElement | null>(null);
     const phase = ref<GamePhase>('idle');
     const score = ref(0);
@@ -124,6 +142,7 @@ export function useFlappyBaraGame() {
     const slowTimeSeconds = ref(0);
     const doubleScoreSeconds = ref(0);
     const lastPickup = ref<PowerUpKind | null>(null);
+    const runNumber = ref(0);
 
     let player = createPlayer();
     let obstacles: Obstacle[] = [];
@@ -140,6 +159,7 @@ export function useFlappyBaraGame() {
     let audioContext: AudioContext | null = null;
     let themeObserver: MutationObserver | null = null;
     let darkMode = false;
+    let remotePlayers: RemotePlayer[] = [];
 
     const activeEffects = computed<ActiveEffect[]>(() => {
         const effects: ActiveEffect[] = [];
@@ -171,8 +191,10 @@ export function useFlappyBaraGame() {
         return effects;
     });
 
-    const canPause = computed(() =>
-        ['playing', 'paused'].includes(phase.value),
+    const canPause = computed(
+        () =>
+            options.allowPause !== false &&
+            ['playing', 'paused'].includes(phase.value),
     );
 
     const statusLabel = computed(() => {
@@ -201,6 +223,11 @@ export function useFlappyBaraGame() {
     }
 
     function startGame(): void {
+        if (options.canStart?.() === false) {
+            return;
+        }
+
+        runNumber.value += 1;
         score.value = 0;
         phase.value = 'playing';
         shieldSeconds.value = 0;
@@ -236,6 +263,10 @@ export function useFlappyBaraGame() {
     }
 
     function togglePause(): void {
+        if (options.allowPause === false) {
+            return;
+        }
+
         if (phase.value === 'playing') {
             phase.value = 'paused';
 
@@ -256,8 +287,11 @@ export function useFlappyBaraGame() {
         const id = nextObstacleId;
         const gapSize = Math.max(220, 268 - Math.floor(score.value / 6) * 6);
         const verticalRange = GROUND_Y - gapSize - 210;
+        const seedOffset = (options.seed ?? 1) % 997;
         const gapY =
-            105 + gapSize / 2 + ((Math.sin(id * 1.83) + 1) / 2) * verticalRange;
+            105 +
+            gapSize / 2 +
+            ((Math.sin((id + seedOffset) * 1.83) + 1) / 2) * verticalRange;
         const shouldHavePickup = id === 1 || id % 2 === 0;
         const pickupKind =
             POWER_UP_SEQUENCE[(id - 1) % POWER_UP_SEQUENCE.length];
@@ -545,6 +579,18 @@ export function useFlappyBaraGame() {
         }
 
         drawParticles(context);
+
+        for (const remotePlayer of remotePlayers) {
+            if (remotePlayer.snapshot.phase !== 'idle') {
+                drawCapybara(
+                    context,
+                    palette,
+                    remotePlayer.snapshot.player,
+                    remotePlayer,
+                );
+            }
+        }
+
         drawCapybara(context, palette);
         drawForeground(context, palette);
         context.restore();
@@ -790,15 +836,27 @@ export function useFlappyBaraGame() {
     function drawCapybara(
         context: CanvasRenderingContext2D,
         palette: typeof lightPalette,
+        renderedPlayer: Player = player,
+        remotePlayer?: RemotePlayer,
     ): void {
         const idleBob =
-            phase.value === 'idle' ? Math.sin(ambientSeconds * 2.3) * 9 : 0;
-        const drawY = player.y + idleBob;
+            remotePlayer === undefined && phase.value === 'idle'
+                ? Math.sin(ambientSeconds * 2.3) * 9
+                : 0;
+        const drawY = renderedPlayer.y + idleBob;
         context.save();
-        context.translate(player.x, drawY);
-        context.rotate(player.rotation);
+        context.translate(renderedPlayer.x, drawY);
+        context.rotate(renderedPlayer.rotation);
 
-        if (shieldCharges > 0 && shieldSeconds.value > 0) {
+        if (remotePlayer !== undefined) {
+            context.globalAlpha = 0.58;
+        }
+
+        if (
+            remotePlayer === undefined &&
+            shieldCharges > 0 &&
+            shieldSeconds.value > 0
+        ) {
             context.fillStyle = 'rgba(119, 226, 214, 0.22)';
             context.strokeStyle = 'rgba(134, 245, 232, 0.9)';
             context.lineWidth = 4;
@@ -808,12 +866,12 @@ export function useFlappyBaraGame() {
             context.stroke();
         }
 
-        if (invincibilitySeconds > 0) {
+        if (remotePlayer === undefined && invincibilitySeconds > 0) {
             context.globalAlpha =
                 Math.floor(invincibilitySeconds * 10) % 2 === 0 ? 0.45 : 1;
         }
 
-        context.fillStyle = palette.scarf;
+        context.fillStyle = remotePlayer?.color ?? palette.scarf;
         context.beginPath();
         context.moveTo(-34, -17);
         context.quadraticCurveTo(-67, -29, -81, -12);
@@ -859,6 +917,36 @@ export function useFlappyBaraGame() {
         context.roundRect(10, 27, 13, 16, 6);
         context.fill();
 
+        context.restore();
+
+        if (remotePlayer !== undefined) {
+            drawRemotePlayerLabel(
+                context,
+                remotePlayer.name,
+                renderedPlayer.x,
+                drawY - 58,
+            );
+        }
+    }
+
+    function drawRemotePlayerLabel(
+        context: CanvasRenderingContext2D,
+        name: string,
+        x: number,
+        y: number,
+    ): void {
+        context.save();
+        context.font = '600 13px InterVariable, sans-serif';
+        context.textAlign = 'center';
+        const labelWidth = Math.min(128, context.measureText(name).width + 18);
+        context.fillStyle = darkMode
+            ? 'rgba(10, 18, 22, 0.78)'
+            : 'rgba(255, 250, 240, 0.86)';
+        context.beginPath();
+        context.roundRect(x - labelWidth / 2, y - 14, labelWidth, 24, 12);
+        context.fill();
+        context.fillStyle = darkMode ? '#f5f5f4' : '#292524';
+        context.fillText(name, x, y + 3, labelWidth - 12);
         context.restore();
     }
 
@@ -992,8 +1080,16 @@ export function useFlappyBaraGame() {
 
     function handleVisibilityChange(): void {
         if (document.hidden && phase.value === 'playing') {
-            phase.value = 'paused';
+            if (options.allowPause === false) {
+                endGame();
+            } else {
+                phase.value = 'paused';
+            }
         }
+    }
+
+    function setRemotePlayers(players: RemotePlayer[]): void {
+        remotePlayers = players;
     }
 
     function getSnapshot(): GameSnapshot {
@@ -1054,7 +1150,9 @@ export function useFlappyBaraGame() {
         isMuted,
         lastPickup,
         phase,
+        runNumber,
         score,
+        setRemotePlayers,
         shieldSeconds,
         slowTimeSeconds,
         startGame,
