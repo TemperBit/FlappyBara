@@ -33,7 +33,7 @@ import {
     type RemotePlayer,
     useFlappyBaraGame,
 } from '@/composables/useFlappyBaraGame';
-import { dashboard, home, login, register } from '@/routes';
+import { home, login, logout, register } from '@/routes';
 import { show as showRaceRoom } from '@/routes/races';
 import type { User } from '@/types';
 
@@ -443,6 +443,10 @@ function joinRace(): void {
     }
 }
 
+function handleLogout(): void {
+    router.flushAll();
+}
+
 function formatDuration(milliseconds: number): string {
     return `${(milliseconds / 1_000).toFixed(1)}s`;
 }
@@ -638,10 +642,13 @@ onBeforeUnmount(() => {
                 >
                     <Link
                         v-if="$page.props.auth.user"
-                        :href="dashboard()"
+                        :href="logout()"
+                        as="button"
                         class="relative rounded-lg px-3 py-2 font-medium text-neutral-700 ring-1 ring-neutral-950/10 hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 sm:text-sm dark:text-neutral-200 dark:ring-white/10 dark:hover:bg-white/5"
+                        data-test="logout-button"
+                        @click="handleLogout"
                     >
-                        Dashboard
+                        Log out
                         <span
                             class="absolute top-1/2 left-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden"
                             aria-hidden="true"
