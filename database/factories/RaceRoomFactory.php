@@ -21,7 +21,7 @@ class RaceRoomFactory extends Factory
     {
         return [
             'host_id' => User::factory(),
-            'code' => fake()->unique()->regexify('[A-HJ-NP-Z2-9]{6}'),
+            'code' => RaceRoom::generateCode(),
             'seed' => fake()->numberBetween(1, 2_147_483_647),
             'starts_at' => null,
         ];

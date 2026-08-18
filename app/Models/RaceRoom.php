@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Random\Randomizer;
 
 /**
  * @property int $id
@@ -26,8 +27,17 @@ use Illuminate\Support\Carbon;
 #[Fillable(['host_id', 'host_guest_id', 'code', 'seed', 'starts_at'])]
 class RaceRoom extends Model
 {
+    public const string CodeAlphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+    public const int CodeLength = 6;
+
     /** @use HasFactory<RaceRoomFactory> */
     use HasFactory;
+
+    public static function generateCode(): string
+    {
+        return (new Randomizer)->getBytesFromString(self::CodeAlphabet, self::CodeLength);
+    }
 
     /**
      * Get the player who created the room.

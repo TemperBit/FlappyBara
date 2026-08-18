@@ -61,6 +61,24 @@ class StoreGameRunRequest extends FormRequest
         ];
     }
 
+    /**
+     * Get the validated game run data.
+     *
+     * @return array{score: int, durationMilliseconds: int, raceCode: string|null}
+     */
+    public function gameRunData(): array
+    {
+        $validated = $this->safe();
+
+        return [
+            'score' => $validated->integer('score'),
+            'durationMilliseconds' => $validated->integer('durationMilliseconds'),
+            'raceCode' => $validated->filled('raceCode')
+                ? (string) $validated->string('raceCode')
+                : null,
+        ];
+    }
+
     protected function prepareForValidation(): void
     {
         if ($this->filled('raceCode')) {

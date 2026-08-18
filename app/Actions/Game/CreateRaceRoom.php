@@ -5,7 +5,6 @@ namespace App\Actions\Game;
 use App\Models\RaceRoom;
 use App\Models\User;
 use Illuminate\Contracts\Auth\Authenticatable;
-use Illuminate\Support\Str;
 use LogicException;
 
 class CreateRaceRoom
@@ -15,7 +14,7 @@ class CreateRaceRoom
     public function handle(Authenticatable $host): RaceRoom
     {
         do {
-            $code = Str::upper(Str::random(6));
+            $code = RaceRoom::generateCode();
         } while (RaceRoom::query()->where('code', $code)->exists());
 
         $attributes = [

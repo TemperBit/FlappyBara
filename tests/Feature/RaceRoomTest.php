@@ -30,6 +30,14 @@ test('guests can create an invite room without an account', function () {
             ->where('race.player.isGuest', true));
 });
 
+test('invite room codes exclude ambiguous characters', function () {
+    Str::createRandomStringsUsing(fn (): string => 'O01IAB');
+
+    $this->post(route('races.store'))->assertRedirect();
+
+    expect(RaceRoom::query()->sole()->code)->toMatch('/\A[A-HJ-NP-Z2-9]{6}\z/');
+});
+
 test('authenticated players can create an invite room', function () {
     $host = User::factory()->create();
 

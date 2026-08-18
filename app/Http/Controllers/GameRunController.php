@@ -14,7 +14,7 @@ class GameRunController extends Controller
         RecordGameRun $recordGameRun,
         GetLeaderboard $getLeaderboard,
     ): JsonResponse {
-        $gameRun = $recordGameRun->handle($request->user(), $request->validated());
+        $gameRun = $recordGameRun->handle($request->user(), $request->gameRunData());
 
         return response()->json([
             'run' => [
