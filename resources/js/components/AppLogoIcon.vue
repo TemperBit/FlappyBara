@@ -14,16 +14,38 @@ defineProps<Props>();
 
 <template>
     <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 40 42"
+        viewBox="0 0 64 64"
         :class="className"
+        aria-hidden="true"
+        focusable="false"
         v-bind="$attrs"
     >
+        <rect
+            width="64"
+            height="64"
+            rx="16"
+            class="fill-[#d8f2ec] dark:fill-[#152f3c]"
+        />
+        <path d="M8 49C19 44 38 45 56 51V64H8V49Z" class="fill-[#70ad83]" />
         <path
-            fill="currentColor"
-            fill-rule="evenodd"
-            clip-rule="evenodd"
-            d="M17.2 5.633 8.6.855 0 5.633v26.51l16.2 9 16.2-9v-8.442l7.6-4.223V9.856l-8.6-4.777-8.6 4.777V18.3l-5.6 3.111V5.633ZM38 18.301l-5.6 3.11v-6.157l5.6-3.11V18.3Zm-1.06-7.856-5.54 3.078-5.54-3.079 5.54-3.078 5.54 3.079ZM24.8 18.3v-6.157l5.6 3.111v6.158L24.8 18.3Zm-1 1.732 5.54 3.078-13.14 7.302-5.54-3.078 13.14-7.3v-.002Zm-16.2 7.89 7.6 4.222V38.3L2 30.966V7.92l5.6 3.111v16.892ZM8.6 9.3 3.06 6.222 8.6 3.143l5.54 3.08L8.6 9.3Zm21.8 15.51-13.2 7.334V38.3l13.2-7.334v-6.156ZM9.6 11.034l5.6-3.11v14.6l-5.6 3.11v-14.6Z"
+            d="M12 48C22 45 41 47 55 54L52 61C37 55 23 54 13 57L12 48Z"
+            class="fill-[#df5f48]"
+        />
+        <circle cx="21" cy="20" r="8" class="fill-[#855a42]" />
+        <circle cx="43" cy="19" r="7" class="fill-[#855a42]" />
+        <ellipse cx="31" cy="35" rx="22" ry="20" class="fill-[#a87550]" />
+        <ellipse cx="43" cy="39" rx="15" ry="12" class="fill-[#c98f63]" />
+        <circle cx="37" cy="30" r="2.5" class="fill-[#342720]" />
+        <ellipse cx="53" cy="39" rx="4" ry="3.5" class="fill-[#4f352c]" />
+        <path
+            d="M50 45C46 48 41 47 39 45"
+            class="fill-none stroke-[#4f352c] stroke-[2.5]"
+            stroke-linecap="round"
+        />
+        <path
+            d="M17 35C15 39 15 43 17 47"
+            class="fill-none stroke-[#c98f63] stroke-3"
+            stroke-linecap="round"
         />
     </svg>
 </template>
