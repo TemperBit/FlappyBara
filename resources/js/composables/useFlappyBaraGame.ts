@@ -56,7 +56,7 @@ export type RacePlayerSnapshot = Pick<
 >;
 
 export type RemotePlayer = {
-    id: number;
+    id: string;
     name: string;
     color: string;
     snapshot: RacePlayerSnapshot;

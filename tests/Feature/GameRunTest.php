@@ -80,7 +80,7 @@ test('completed race runs are persisted and broadcast', function () {
     Event::assertDispatched(
         RacerFinished::class,
         fn (RacerFinished $event): bool => $event->raceCode === $raceRoom->code
-            && $event->userId === $player->id
+            && $event->playerId === 'user-'.$player->id
             && $event->score === 8,
     );
 });

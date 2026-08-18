@@ -17,7 +17,7 @@ defineProps<{
 defineOptions({
     layout: {
         title: 'Create an account',
-        description: 'Pick a player name, email, and password. That is it.',
+        description: 'Save scores with a name, email, and 6-character password.',
     },
 });
 </script>

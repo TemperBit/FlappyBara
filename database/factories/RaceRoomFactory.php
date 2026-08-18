@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\RaceRoom;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * @extends Factory<RaceRoom>
@@ -33,6 +34,17 @@ class RaceRoomFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'starts_at' => now()->subSecond(),
+        ]);
+    }
+
+    /**
+     * Indicate that a guest player hosts the race.
+     */
+    public function guestHosted(?string $guestId = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'host_id' => null,
+            'host_guest_id' => $guestId ?? (string) Str::uuid(),
         ]);
     }
 }

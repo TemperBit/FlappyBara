@@ -29,7 +29,7 @@ class RecordGameRun
         if ($raceRoom !== null) {
             RacerFinished::dispatch(
                 $raceRoom->code,
-                $user->id,
+                'user-'.$user->id,
                 $user->name,
                 $gameRun->score,
                 $gameRun->duration_milliseconds,

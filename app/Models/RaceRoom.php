@@ -13,16 +13,17 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
- * @property int $host_id
+ * @property int|null $host_id
+ * @property string|null $host_guest_id
  * @property string $code
  * @property int $seed
  * @property Carbon|null $starts_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * @property-read User $host
+ * @property-read User|null $host
  * @property-read Collection<int, GameRun> $gameRuns
  */
-#[Fillable(['host_id', 'code', 'seed', 'starts_at'])]
+#[Fillable(['host_id', 'host_guest_id', 'code', 'seed', 'starts_at'])]
 class RaceRoom extends Model
 {
     /** @use HasFactory<RaceRoomFactory> */

@@ -2,38 +2,55 @@
 
 namespace App\Policies;
 
+use App\Actions\Game\ResolveRacePlayer;
 use App\Models\RaceRoom;
 use App\Models\User;
+use Illuminate\Contracts\Auth\Authenticatable;
 
 class RaceRoomPolicy
 {
-    public function viewAny(User $user): bool
+    public function __construct(private readonly ResolveRacePlayer $resolveRacePlayer) {}
+
+    public function viewAny(Authenticatable $player): bool
     {
         return true;
     }
 
-    public function view(User $user, RaceRoom $raceRoom): bool
+    public function view(Authenticatable $player, RaceRoom $raceRoom): bool
     {
         return true;
     }
 
-    public function create(User $user): bool
+    public function create(Authenticatable $player): bool
     {
         return true;
     }
 
-    public function update(User $user, RaceRoom $raceRoom): bool
+    public function update(Authenticatable $player, RaceRoom $raceRoom): bool
     {
-        return $user->id === $raceRoom->host_id;
+        return $this->isHost($player, $raceRoom);
     }
 
-    public function delete(User $user, RaceRoom $raceRoom): bool
+    public function delete(Authenticatable $player, RaceRoom $raceRoom): bool
     {
-        return $user->id === $raceRoom->host_id;
+        return $this->isHost($player, $raceRoom);
     }
 
-    public function start(User $user, RaceRoom $raceRoom): bool
+    public function start(Authenticatable $player, RaceRoom $raceRoom): bool
     {
-        return $user->id === $raceRoom->host_id;
+        return $this->isHost($player, $raceRoom);
+    }
+
+    private function isHost(Authenticatable $player, RaceRoom $raceRoom): bool
+    {
+        if ($player instanceof User) {
+            return $player->id === $raceRoom->host_id;
+        }
+
+        $guestId = $this->resolveRacePlayer->guestId($player);
+
+        return $guestId !== null
+            && $raceRoom->host_guest_id !== null
+            && hash_equals($raceRoom->host_guest_id, $guestId);
     }
 }

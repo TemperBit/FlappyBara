@@ -1,13 +1,30 @@
 <?php
 
+use App\Actions\Game\ResolveRacePlayer;
 use App\Events\RaceStarted;
 use App\Models\RaceRoom;
 use App\Models\User;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 
-test('guests are sent to login before creating a race room', function () {
-    $this->post(route('races.store'))->assertRedirect(route('login'));
+test('guests can create an invite room without an account', function () {
+    $this->withoutVite();
+
+    $response = $this->post(route('races.store'));
+    $raceRoom = RaceRoom::query()->sole();
+
+    $response->assertRedirect(route('races.show', $raceRoom));
+    expect($raceRoom)
+        ->host_id->toBeNull()
+        ->host_guest_id->not->toBeNull()
+        ->code->toHaveLength(6);
+
+    $this->get(route('races.show', $raceRoom))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('race.isHost', true)
+            ->where('race.player.isGuest', true));
 });
 
 test('authenticated players can create an invite room', function () {
@@ -63,4 +80,37 @@ test('only the host can start a race', function () {
         fn (RaceStarted $event): bool => $event->raceCode === $raceRoom->code
             && $event->seed === $raceRoom->seed,
     );
+});
+
+test('a guest host can start their race but another guest cannot', function () {
+    $hostGuestId = (string) Str::uuid();
+    $otherGuestId = (string) Str::uuid();
+    $raceRoom = RaceRoom::factory()->guestHosted($hostGuestId)->create();
+
+    $this->withSession([ResolveRacePlayer::GuestIdSessionKey => $otherGuestId])
+        ->postJson(route('races.start', $raceRoom))
+        ->assertForbidden();
+
+    Event::fake([RaceStarted::class]);
+
+    $this->withSession([ResolveRacePlayer::GuestIdSessionKey => $hostGuestId])
+        ->postJson(route('races.start', $raceRoom))
+        ->assertOk()
+        ->assertJsonPath('race.player.id', 'guest-'.$hostGuestId);
+
+    Event::assertDispatched(RaceStarted::class);
+});
+
+test('guest players can authorize the race presence channel', function () {
+    config()->set('broadcasting.default', 'reverb');
+
+    $guestId = (string) Str::uuid();
+    $raceRoom = RaceRoom::factory()->guestHosted()->create();
+
+    $this->withSession([ResolveRacePlayer::GuestIdSessionKey => $guestId])
+        ->postJson('/broadcasting/auth', [
+            'channel_name' => 'presence-race.'.$raceRoom->code,
+            'socket_id' => '1234.5678',
+        ])
+        ->assertOk();
 });

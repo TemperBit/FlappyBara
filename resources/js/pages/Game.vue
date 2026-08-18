@@ -52,16 +52,23 @@ type RaceRoom = {
     startsAt: string | null;
     isHost: boolean;
     hostName: string;
+    player: RacePlayer;
+};
+
+type RacePlayer = {
+    id: string;
+    name: string;
+    isGuest: boolean;
 };
 
 type RaceMember = {
-    id: number;
+    id: string;
     name: string;
     isHost: boolean;
 };
 
 type SnapshotPayload = {
-    userId: number;
+    playerId: string;
     name: string;
     snapshot: RacePlayerSnapshot;
 };
@@ -73,7 +80,7 @@ type RaceStartedPayload = {
 };
 
 type RaceFinishedPayload = {
-    userId: number;
+    playerId: string;
     playerName: string;
     score: number;
     durationMilliseconds: number;
@@ -106,10 +113,11 @@ const props = withDefaults(
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth.user as User | null);
+const currentRacePlayer = computed(() => props.race?.player ?? null);
 const leaderboardEntries = ref([...props.leaderboard]);
 const raceMembers = ref<RaceMember[]>([]);
 const raceFinishers = ref<RaceFinishedPayload[]>([]);
-const remoteSnapshots = new Map<number, SnapshotPayload>();
+const remoteSnapshots = new Map<string, SnapshotPayload>();
 const raceStartsAt = ref(props.race?.startsAt ?? null);
 const raceCanStart = ref(props.race === null);
 const countdownSeconds = ref<number | null>(null);
@@ -277,7 +285,7 @@ function runPrimaryAction(): void {
 
 function normalizeMember(member: RaceMember): RaceMember {
     return {
-        id: Number(member.id),
+        id: String(member.id),
         name: member.name,
         isHost: Boolean(member.isHost),
     };
@@ -301,7 +309,7 @@ function addRaceMember(member: RaceMember): void {
 }
 
 function removeRaceMember(member: RaceMember): void {
-    const memberId = Number(member.id);
+    const memberId = String(member.id);
     raceMembers.value = raceMembers.value.filter(
         (existingMember) => existingMember.id !== memberId,
     );
@@ -312,9 +320,9 @@ function removeRaceMember(member: RaceMember): void {
 function syncRemotePlayers(): void {
     const players: RemotePlayer[] = [...remoteSnapshots.values()].map(
         (payload) => ({
-            id: payload.userId,
+            id: payload.playerId,
             name: payload.name,
-            color: remoteColors[payload.userId % remoteColors.length],
+            color: remoteColorFor(payload.playerId),
             snapshot: payload.snapshot,
         }),
     );
@@ -323,18 +331,28 @@ function syncRemotePlayers(): void {
 }
 
 function receiveSnapshot(payload: SnapshotPayload): void {
-    if (payload.userId === currentUser.value?.id) {
+    if (payload.playerId === currentRacePlayer.value?.id) {
         return;
     }
 
-    remoteSnapshots.set(payload.userId, payload);
+    remoteSnapshots.set(payload.playerId, payload);
     syncRemotePlayers();
+}
+
+function remoteColorFor(playerId: string): string {
+    let colorIndex = 0;
+
+    for (const character of playerId) {
+        colorIndex = (colorIndex * 31 + character.charCodeAt(0)) >>> 0;
+    }
+
+    return remoteColors[colorIndex % remoteColors.length];
 }
 
 function recordFinisher(payload: RaceFinishedPayload): void {
     raceFinishers.value = [
         ...raceFinishers.value.filter(
-            (finisher) => finisher.userId !== payload.userId,
+            (finisher) => finisher.playerId !== payload.playerId,
         ),
         payload,
     ].sort(
@@ -438,7 +456,6 @@ function handleCanvasPointer(event: PointerEvent): void {
 watch(phase, (nextPhase) => {
     if (
         nextPhase !== 'game-over' ||
-        currentUser.value === null ||
         lastSubmittedRun === runNumber.value
     ) {
         return;
@@ -446,6 +463,27 @@ watch(phase, (nextPhase) => {
 
     lastSubmittedRun = runNumber.value;
     const snapshot = getSnapshot();
+
+    if (
+        props.race !== null &&
+        currentRacePlayer.value !== null &&
+        presence !== null
+    ) {
+        const finisher = {
+            playerId: currentRacePlayer.value.id,
+            playerName: currentRacePlayer.value.name,
+            score: snapshot.score,
+            durationMilliseconds: snapshot.elapsedMilliseconds,
+        } satisfies RaceFinishedPayload;
+
+        recordFinisher(finisher);
+        presence.channel().whisper('finish', finisher);
+    }
+
+    if (currentUser.value === null) {
+        return;
+    }
+
     runSubmission.score = snapshot.score;
     runSubmission.durationMilliseconds = snapshot.elapsedMilliseconds;
     runSubmission.raceCode = props.race?.code ?? null;
@@ -453,15 +491,6 @@ watch(phase, (nextPhase) => {
     void runSubmission.post(storeGameRun.url(), {
         onSuccess: (response) => {
             leaderboardEntries.value = response.leaderboard;
-
-            if (props.race !== null) {
-                recordFinisher({
-                    userId: currentUser.value!.id,
-                    playerName: currentUser.value!.name,
-                    score: snapshot.score,
-                    durationMilliseconds: snapshot.elapsedMilliseconds,
-                });
-            }
         },
     });
 });
@@ -478,14 +507,14 @@ onMounted(() => {
             members.forEach(addRaceMember);
 
             if (
-                currentUser.value !== null &&
+                currentRacePlayer.value !== null &&
                 !raceMembers.value.some(
-                    (member) => member.id === currentUser.value!.id,
+                    (member) => member.id === currentRacePlayer.value!.id,
                 )
             ) {
                 addRaceMember({
-                    id: currentUser.value.id,
-                    name: currentUser.value.name,
+                    id: currentRacePlayer.value.id,
+                    name: currentRacePlayer.value.name,
                     isHost: props.race!.isHost,
                 });
             }
@@ -498,17 +527,18 @@ onMounted(() => {
         .listen('.race.finished', (payload: RaceFinishedPayload) => {
             recordFinisher(payload);
         })
-        .listenForWhisper('snapshot', receiveSnapshot);
+        .listenForWhisper('snapshot', receiveSnapshot)
+        .listenForWhisper('finish', recordFinisher);
 
     snapshotTimer = window.setInterval(() => {
-        if (phase.value !== 'playing' || currentUser.value === null) {
+        if (phase.value !== 'playing' || currentRacePlayer.value === null) {
             return;
         }
 
         const snapshot = getSnapshot();
         presence.channel().whisper('snapshot', {
-            userId: currentUser.value.id,
-            name: currentUser.value.name,
+            playerId: currentRacePlayer.value.id,
+            name: currentRacePlayer.value.name,
             snapshot: {
                 phase: snapshot.phase,
                 score: snapshot.score,
@@ -669,9 +699,9 @@ onBeforeUnmount(() => {
                         <p
                             class="max-w-[48ch] text-lg text-pretty text-neutral-600 sm:text-base dark:text-neutral-300"
                         >
-                            Guide Bara through the wetlands, collect clever
-                            power-ups, race your friends live, and chase the top
-                            of the global board.
+                            Play solo or race friends live with no account.
+                            Sign in only when you want to save leaderboard
+                            scores.
                         </p>
                     </div>
                 </div>
@@ -804,7 +834,7 @@ onBeforeUnmount(() => {
                     >
                         <li
                             v-for="(finisher, index) in raceFinishers"
-                            :key="finisher.userId"
+                            :key="finisher.playerId"
                             class="flex items-center justify-between gap-4 py-3"
                         >
                             <p class="min-w-0 truncate font-medium">
@@ -848,7 +878,7 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
 
-                    <div v-if="currentUser" class="flex flex-col gap-3">
+                    <div class="flex flex-col gap-3">
                         <Form
                             :action="createRaceRoom()"
                             v-slot="{ processing }"
@@ -895,19 +925,14 @@ onBeforeUnmount(() => {
                                 Join
                             </button>
                         </form>
+                        <p
+                            v-if="!currentUser"
+                            class="text-neutral-500 sm:text-sm dark:text-neutral-400"
+                        >
+                            No account required. We will give you a temporary
+                            guest name for the race.
+                        </p>
                     </div>
-
-                    <Link
-                        v-else
-                        :href="register()"
-                        class="relative w-fit rounded-lg px-3 py-2 font-medium text-neutral-800 ring-1 ring-neutral-950/15 hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 sm:text-sm dark:text-neutral-100 dark:ring-white/15 dark:hover:bg-white/5"
-                    >
-                        Create an account to race
-                        <span
-                            class="absolute top-1/2 left-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden"
-                            aria-hidden="true"
-                        />
-                    </Link>
                 </div>
             </section>
 
