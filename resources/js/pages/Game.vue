@@ -29,10 +29,11 @@ import {
     store as createRaceRoom,
 } from '@/actions/App/Http/Controllers/RaceRoomController';
 import {
-    type RacePlayerSnapshot,
-    type RemotePlayer,
-    useFlappyBaraGame,
+    
+    
+    useFlappyBaraGame
 } from '@/composables/useFlappyBaraGame';
+import type {RacePlayerSnapshot, RemotePlayer} from '@/composables/useFlappyBaraGame';
 import { home, login, logout, register } from '@/routes';
 import { show as showRaceRoom } from '@/routes/races';
 import type { User } from '@/types';
