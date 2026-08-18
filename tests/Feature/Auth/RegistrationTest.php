@@ -16,10 +16,19 @@ test('new users can register', function () {
     $response = $this->post(route('register.store'), [
         'name' => 'Test User',
         'email' => 'test@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
+        'password' => 'bara12',
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('home', absolute: false));
+});
+
+test('passwords shorter than six characters are rejected', function () {
+    $this->post(route('register.store'), [
+        'name' => 'Quick Bara',
+        'email' => 'quick@example.com',
+        'password' => 'bara1',
+    ])->assertSessionHasErrors('password');
+
+    $this->assertGuest();
 });

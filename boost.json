@@ -1,11 +1,8 @@
 {
     "agents": [
-        "claude_code",
-        "codex",
-        "cursor",
-        "opencode"
+        "codex"
     ],
-    "cloud": false,
+    "cloud": true,
     "guidelines": true,
     "mcp": true,
     "nightwatch": false,
@@ -14,9 +11,13 @@
         "infer-conventions",
         "fortify-development",
         "laravel-best-practices",
+        "configure-nightwatch",
         "wayfinder-development",
         "pest-testing",
         "inertia-vue-development",
-        "tailwindcss-development"
+        "tailwindcss-development",
+        "echo-vue-development",
+        "echo-development",
+        "deploying-laravel-cloud"
     ]
 }

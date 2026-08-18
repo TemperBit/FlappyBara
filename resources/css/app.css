@@ -8,6 +8,13 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+    --font-game:
+        InterVariable, ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
+    --font-game--font-feature-settings:
+        'cv02', 'cv03', 'cv04', 'cv11', 'ss01', 'ss03';
+
     --font-sans:
         Instrument Sans, ui-sans-serif, system-ui, sans-serif,
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
