@@ -28,12 +28,11 @@ import {
     start as startRaceRoom,
     store as createRaceRoom,
 } from '@/actions/App/Http/Controllers/RaceRoomController';
-import {
-    
-    
-    useFlappyBaraGame
+import { useFlappyBaraGame } from '@/composables/useFlappyBaraGame';
+import type {
+    RacePlayerSnapshot,
+    RemotePlayer,
 } from '@/composables/useFlappyBaraGame';
-import type {RacePlayerSnapshot, RemotePlayer} from '@/composables/useFlappyBaraGame';
 import { home, login, logout, register } from '@/routes';
 import { show as showRaceRoom } from '@/routes/races';
 import type { User } from '@/types';
@@ -459,10 +458,7 @@ function handleCanvasPointer(event: PointerEvent): void {
 }
 
 watch(phase, (nextPhase) => {
-    if (
-        nextPhase !== 'game-over' ||
-        lastSubmittedRun === runNumber.value
-    ) {
+    if (nextPhase !== 'game-over' || lastSubmittedRun === runNumber.value) {
         return;
     }
 
@@ -707,9 +703,8 @@ onBeforeUnmount(() => {
                         <p
                             class="max-w-[48ch] text-lg text-pretty text-neutral-600 sm:text-base dark:text-neutral-300"
                         >
-                            Play solo or race friends live with no account.
-                            Sign in only when you want to save leaderboard
-                            scores.
+                            Play solo or race friends live with no account. Sign
+                            in only when you want to save leaderboard scores.
                         </p>
                     </div>
                 </div>
