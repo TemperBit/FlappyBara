@@ -67,8 +67,9 @@ class RaceRoomController extends Controller
             'seed' => $raceRoom->seed,
             'startsAt' => $raceRoom->starts_at?->toIso8601String(),
             'isHost' => Gate::forUser($player)->allows('start', $raceRoom),
-            'hostName' => $raceRoom->host?->name
-                ?? $this->resolveRacePlayer->guestName((string) $raceRoom->host_guest_id),
+            'hostName' => $raceRoom->host_id === null
+                ? $this->resolveRacePlayer->guestName((string) $raceRoom->host_guest_id)
+                : $raceRoom->host->name,
             'player' => [
                 'id' => $this->resolveRacePlayer->key($player),
                 'name' => $this->resolveRacePlayer->name($player),

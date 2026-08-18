@@ -4,6 +4,9 @@ use App\Actions\Game\ResolveRacePlayer;
 use App\Events\RaceStarted;
 use App\Models\RaceRoom;
 use App\Models\User;
+use Illuminate\Auth\GenericUser;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -101,16 +104,18 @@ test('a guest host can start their race but another guest cannot', function () {
     Event::assertDispatched(RaceStarted::class);
 });
 
-test('guest players can authorize the race presence channel', function () {
-    config()->set('broadcasting.default', 'reverb');
-
+test('the race guard resolves a session-backed guest player', function () {
     $guestId = (string) Str::uuid();
-    $raceRoom = RaceRoom::factory()->guestHosted()->create();
+    $request = Request::create('/broadcasting/auth', 'POST');
+    $request->setLaravelSession(app('session')->driver());
+    $request->session()->put(ResolveRacePlayer::GuestIdSessionKey, $guestId);
 
-    $this->withSession([ResolveRacePlayer::GuestIdSessionKey => $guestId])
-        ->postJson('/broadcasting/auth', [
-            'channel_name' => 'presence-race.'.$raceRoom->code,
-            'socket_id' => '1234.5678',
-        ])
-        ->assertOk();
+    $guard = Auth::guard('race');
+    $guard->setRequest($request);
+    $player = $guard->user();
+
+    expect($player)
+        ->toBeInstanceOf(GenericUser::class)
+        ->getAuthIdentifier()->toBe('guest-'.$guestId)
+        ->name->toStartWith('Guest Bara ');
 });

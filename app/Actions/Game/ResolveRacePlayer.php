@@ -47,8 +47,12 @@ class ResolveRacePlayer
 
     public function name(Authenticatable $player): string
     {
-        if ($player instanceof User || $player instanceof GenericUser) {
-            return (string) $player->name;
+        if ($player instanceof User) {
+            return $player->name;
+        }
+
+        if ($player instanceof GenericUser) {
+            return (string) $player->__get('name');
         }
 
         throw new LogicException('Unsupported race player type.');
